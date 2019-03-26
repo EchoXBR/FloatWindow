@@ -2,6 +2,8 @@ package com.yhao.floatwindow;
 
 import android.animation.TimeInterpolator;
 import android.content.Context;
+import android.graphics.Point;
+import android.os.Build;
 import android.support.annotation.LayoutRes;
 import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
@@ -9,8 +11,15 @@ import android.support.annotation.Nullable;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
+
+import com.yhao.floatwindow.menu.FloatMenu;
+import com.yhao.floatwindow.menu.FloatMenuCfg;
+import com.yhao.floatwindow.menu.MenuItem;
+import com.yhao.floatwindow.utils.DensityUtil;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -20,12 +29,14 @@ import java.util.Map;
 
 public class FloatWindow {
 
+    private static final String mDefaultTag = "default_float_window_tag";
+    private static Map<String, IFloatWindow> mFloatWindowMap;
+    private static B mBuilder = null;
+
+
     private FloatWindow() {
 
     }
-
-    private static final String mDefaultTag = "default_float_window_tag";
-    private static Map<String, IFloatWindow> mFloatWindowMap;
 
     public static IFloatWindow get() {
         return get(mDefaultTag);
@@ -34,8 +45,6 @@ public class FloatWindow {
     public static IFloatWindow get(@NonNull String tag) {
         return mFloatWindowMap == null ? null : mFloatWindowMap.get(tag);
     }
-
-    private static B mBuilder = null;
 
     @MainThread
     public static B with(@NonNull Context applicationContext) {
@@ -57,7 +66,6 @@ public class FloatWindow {
     public static class B {
         Context mApplicationContext;
         View mView;
-        private int mLayoutId;
         int mWidth = ViewGroup.LayoutParams.WRAP_CONTENT;
         int mHeight = ViewGroup.LayoutParams.WRAP_CONTENT;
         int gravity = Gravity.TOP | Gravity.START;
@@ -70,10 +78,13 @@ public class FloatWindow {
         int mSlideRightMargin;
         long mDuration = 300;
         TimeInterpolator mInterpolator;
-        private String mTag = mDefaultTag;
         boolean mDesktopShow;
         PermissionListener mPermissionListener;
         ViewStateListener mViewStateListener;
+        List<MenuItem> menuItems;
+
+        private int mLayoutId;
+        private String mTag = mDefaultTag;
 
         private B() {
 
@@ -82,6 +93,8 @@ public class FloatWindow {
         B(Context applicationContext) {
             mApplicationContext = applicationContext;
         }
+
+
 
         public B setView(@NonNull View view) {
             mView = view;
@@ -93,10 +106,13 @@ public class FloatWindow {
             return this;
         }
 
+
         public B setWidth(int width) {
             mWidth = width;
             return this;
         }
+
+
 
         public B setHeight(int height) {
             mHeight = height;
@@ -110,14 +126,12 @@ public class FloatWindow {
             return this;
         }
 
-
         public B setHeight(@Screen.screenType int screenType, float ratio) {
             mHeight = (int) ((screenType == Screen.width ?
                     Util.getScreenWidth(mApplicationContext) :
                     Util.getScreenHeight(mApplicationContext)) * ratio);
             return this;
         }
-
 
         public B setX(int x) {
             xOffset = x;
@@ -143,12 +157,13 @@ public class FloatWindow {
             return this;
         }
 
-
         /**
          * 设置 Activity 过滤器，用于指定在哪些界面显示悬浮窗，默认全部界面都显示
          *
-         * @param show       　过滤类型,子类类型也会生效
-         * @param activities 　过滤界面
+         * @param show
+         *         　过滤类型,子类类型也会生效
+         * @param activities
+         *         　过滤界面
          */
         public B setFilter(boolean show, @NonNull Class... activities) {
             mShow = show;
@@ -160,13 +175,15 @@ public class FloatWindow {
             return setMoveType(moveType, 0, 0);
         }
 
-
         /**
          * 设置带边距的贴边动画，只有 moveType 为 MoveType.slide，设置边距才有意义，这个方法不标准，后面调整
          *
-         * @param moveType         贴边动画 MoveType.slide
-         * @param slideLeftMargin  贴边动画左边距，默认为 0
-         * @param slideRightMargin 贴边动画右边距，默认为 0
+         * @param moveType
+         *         贴边动画 MoveType.slide
+         * @param slideLeftMargin
+         *         贴边动画左边距，默认为 0
+         * @param slideRightMargin
+         *         贴边动画右边距，默认为 0
          */
         public B setMoveType(@MoveType.MOVE_TYPE int moveType, int slideLeftMargin, int slideRightMargin) {
             mMoveType = moveType;
@@ -201,6 +218,16 @@ public class FloatWindow {
             return this;
         }
 
+
+
+
+
+        public B  setMenu(List<com.yhao.floatwindow.menu.MenuItem> menuItems) {
+            this.menuItems = menuItems;
+            return this;
+        }
+
+
         public void build() {
             if (mFloatWindowMap == null) {
                 mFloatWindowMap = new HashMap<>();
@@ -214,9 +241,15 @@ public class FloatWindow {
             if (mView == null) {
                 mView = Util.inflate(mApplicationContext, mLayoutId);
             }
+
+
             IFloatWindow floatWindowImpl = new IFloatWindowImpl(this);
+            floatWindowImpl.buildMenu();
+
             mFloatWindowMap.put(mTag, floatWindowImpl);
         }
 
     }
+
+
 }

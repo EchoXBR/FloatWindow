@@ -2,6 +2,8 @@ package com.yhao.floatwindow;
 
 import android.view.View;
 
+import java.util.List;
+
 /**
  * Created by yhao on 2017/12/22.
  * https://github.com/yhaolpz
@@ -29,4 +31,7 @@ public abstract class IFloatWindow {
     public abstract View getView();
 
     abstract void dismiss();
+
+//    abstract void setMenu(List<com.yhao.floatwindow.menu.MenuItem> menuItems);
+    abstract void buildMenu();
 }

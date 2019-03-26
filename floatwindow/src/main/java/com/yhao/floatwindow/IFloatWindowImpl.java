@@ -7,11 +7,19 @@ import android.animation.PropertyValuesHolder;
 import android.animation.TimeInterpolator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
+import android.content.Context;
+import android.graphics.Point;
 import android.os.Build;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
+
+import com.yhao.floatwindow.menu.FloatMenu;
+import com.yhao.floatwindow.menu.FloatMenuCfg;
+import com.yhao.floatwindow.menu.MenuItem;
+import com.yhao.floatwindow.utils.DensityUtil;
 
 /**
  * Created by yhao on 2017/12/22.
@@ -21,6 +29,11 @@ import android.view.animation.DecelerateInterpolator;
 public class IFloatWindowImpl extends IFloatWindow {
 
 
+    public int floatballX, floatballY;
+    public int mScreenWidth, mScreenHeight;
+    FloatMenu floatMenu;
+    boolean isExplan = false;
+    WindowManager mWindowManager;
     private FloatWindow.B mB;
     private FloatView mFloatView;
     private FloatLifecycle mFloatLifecycle;
@@ -35,7 +48,6 @@ public class IFloatWindowImpl extends IFloatWindow {
     private boolean mClick = false;
     private int mSlop;
 
-
     private IFloatWindowImpl() {
 
     }
@@ -44,13 +56,14 @@ public class IFloatWindowImpl extends IFloatWindow {
         mB = b;
         if (mB.mMoveType == MoveType.fixed) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-                mFloatView = new FloatPhone(b.mApplicationContext, mB.mPermissionListener);
+                mFloatView = new FloatPhone(b.mApplicationContext, mB.mPermissionListener, this);
             } else {
                 mFloatView = new FloatToast(b.mApplicationContext);
             }
         } else {
-            mFloatView = new FloatPhone(b.mApplicationContext, mB.mPermissionListener);
+            mFloatView = new FloatPhone(b.mApplicationContext, mB.mPermissionListener, this);
             initTouchEvent();
+            initClickEvent();
         }
         mFloatView.setSize(mB.mWidth, mB.mHeight);
         mFloatView.setGravity(mB.gravity, mB.xOffset, mB.yOffset);
@@ -76,6 +89,8 @@ public class IFloatWindowImpl extends IFloatWindow {
                 }
             }
         });
+        computeScreenSize();
+        initMenu();
     }
 
     @Override
@@ -122,8 +137,60 @@ public class IFloatWindowImpl extends IFloatWindow {
         }
     }
 
+    public int getMenuItemSize() {
+        return mB.menuItems != null ? mB.menuItems.size() : 0;
+    }
+
+    public void closeMenu() {
+        floatMenu.closeMenu();
+    }
+
+    public void reset() {
+        //            floatBall.setVisibility(View.VISIBLE);
+        //            floatBall.postSleepRunnable();
+        floatMenu.detachFromWindow(mWindowManager);
+    }
+
+    private void inflateMenuItem() {
+        floatMenu.removeAllItemViews();
+        for (MenuItem item : mB.menuItems) {
+            floatMenu.addItem(item);
+        }
+
+    }
+
+    /**
+     * 如果有菜单，则监听点击 展开关闭菜单
+     */
+    private void initClickEvent() {
+        if (mB.menuItems.size() > 0) {
+            mB.mView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    floatMenu.attachToWindow(mWindowManager);
+                }
+            });
+        }
+    }
+
+    private void initMenu() {
+        //2 需要显示悬浮菜单
+        //2.1 初始化悬浮菜单配置，有菜单item的大小和菜单item的个数
+        int menuSize = DensityUtil.dip2px(mB.mApplicationContext, mB.mWidth+200);
+        int menuItemSize = DensityUtil.dip2px(mB.mApplicationContext, 40);
+        FloatMenuCfg menuCfg = new FloatMenuCfg(menuSize, menuItemSize);
+        floatMenu = new FloatMenu(mB.mApplicationContext, this, menuCfg);
+    }
+
+    @Override
+    public void buildMenu() {
+        inflateMenuItem();
+    }
+
     @Override
     public void updateX(int x) {
+        floatMenu.detachFromWindow(mWindowManager);
+        isExplan = false;
         checkMoveType();
         mB.xOffset = x;
         mFloatView.updateX(x);
@@ -131,14 +198,19 @@ public class IFloatWindowImpl extends IFloatWindow {
 
     @Override
     public void updateY(int y) {
+        floatMenu.detachFromWindow(mWindowManager);
+        isExplan = false;
         checkMoveType();
         mB.yOffset = y;
         mFloatView.updateY(y);
     }
 
+
     @Override
     public void updateX(int screenType, float ratio) {
         checkMoveType();
+        floatMenu.detachFromWindow(mWindowManager);
+        isExplan = false;
         mB.xOffset = (int) ((screenType == Screen.width ?
                 Util.getScreenWidth(mB.mApplicationContext) :
                 Util.getScreenHeight(mB.mApplicationContext)) * ratio);
@@ -149,6 +221,8 @@ public class IFloatWindowImpl extends IFloatWindow {
     @Override
     public void updateY(int screenType, float ratio) {
         checkMoveType();
+        floatMenu.detachFromWindow(mWindowManager);
+        isExplan = false;
         mB.yOffset = (int) ((screenType == Screen.width ?
                 Util.getScreenWidth(mB.mApplicationContext) :
                 Util.getScreenHeight(mB.mApplicationContext)) * ratio);
@@ -166,13 +240,11 @@ public class IFloatWindowImpl extends IFloatWindow {
         return mFloatView.getY();
     }
 
-
     @Override
     public View getView() {
         mSlop = ViewConfiguration.get(mB.mApplicationContext).getScaledTouchSlop();
         return mB.mView;
     }
-
 
     private void checkMoveType() {
         if (mB.mMoveType == MoveType.fixed) {
@@ -180,6 +252,13 @@ public class IFloatWindowImpl extends IFloatWindow {
         }
     }
 
+    public int getBallSize() {
+        int startX = mFloatView.getX();
+        int endX = (startX * 2 + mB.mView.getWidth() > Util.getScreenWidth(mB.mApplicationContext)) ?
+                mB.mView.getWidth() :
+                mB.mView.getWidth() + mB.mSlideLeftMargin;
+        return endX;
+    }
 
     private void initTouchEvent() {
         switch (mB.mMoveType) {
@@ -267,7 +346,6 @@ public class IFloatWindowImpl extends IFloatWindow {
         }
     }
 
-
     private void startAnimator() {
         if (mB.mInterpolator == null) {
             if (mDecelerateInterpolator == null) {
@@ -298,5 +376,19 @@ public class IFloatWindowImpl extends IFloatWindow {
             mAnimator.cancel();
         }
     }
+
+    public void computeScreenSize() {
+        mWindowManager = (WindowManager) mB.mApplicationContext.getSystemService(Context.WINDOW_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
+            Point point = new Point();
+            mWindowManager.getDefaultDisplay().getSize(point);
+            mScreenWidth = point.x;
+            mScreenHeight = point.y;
+        } else {
+            mScreenWidth = mWindowManager.getDefaultDisplay().getWidth();
+            mScreenHeight = mWindowManager.getDefaultDisplay().getHeight();
+        }
+    }
+
 
 }

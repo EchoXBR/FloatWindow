@@ -17,12 +17,14 @@ class FloatPhone extends FloatView {
 
     private final WindowManager mWindowManager;
     private final WindowManager.LayoutParams mLayoutParams;
+    IFloatWindowImpl floatWindow;
     private View mView;
     private int mX, mY;
     private boolean isRemove = false;
     private PermissionListener mPermissionListener;
 
-    FloatPhone(Context applicationContext, PermissionListener permissionListener) {
+    FloatPhone(Context applicationContext, PermissionListener permissionListener, IFloatWindowImpl floatWindow) {
+        this.floatWindow = floatWindow;
         mContext = applicationContext;
         mPermissionListener = permissionListener;
         mWindowManager = (WindowManager) applicationContext.getSystemService(Context.WINDOW_SERVICE);
@@ -48,8 +50,9 @@ class FloatPhone extends FloatView {
     @Override
     public void setGravity(int gravity, int xOffset, int yOffset) {
         mLayoutParams.gravity = gravity;
-        mLayoutParams.x = mX = xOffset;
-        mLayoutParams.y = mY = yOffset;
+        floatWindow.floatballX = mLayoutParams.x = mX = xOffset;
+        floatWindow.floatballY = mLayoutParams.y = mY = yOffset;
+
     }
 
 
@@ -123,23 +126,33 @@ class FloatPhone extends FloatView {
 
     @Override
     public void updateXY(int x, int y) {
-        if (isRemove) return;
-        mLayoutParams.x = mX = x;
-        mLayoutParams.y = mY = y;
+        if (isRemove) {
+            return;
+        }
+        floatWindow.floatballX = mLayoutParams.x = mX = x;
+        floatWindow.floatballY = mLayoutParams.y = mY = y;
+        //        mLayoutParams.x = mX = x;
+        //        mLayoutParams.y = mY = y;
         mWindowManager.updateViewLayout(mView, mLayoutParams);
     }
 
     @Override
     void updateX(int x) {
-        if (isRemove) return;
-        mLayoutParams.x = mX = x;
+        if (isRemove) {
+            return;
+        }
+        floatWindow.floatballX = mLayoutParams.x = mX = x;
+
+        //        mLayoutParams.x = mX = x;
         mWindowManager.updateViewLayout(mView, mLayoutParams);
     }
 
     @Override
     void updateY(int y) {
-        if (isRemove) return;
-        mLayoutParams.y = mY = y;
+        if (isRemove) {
+            return;
+        }
+        floatWindow.floatballY = mLayoutParams.y = mY = y;
         mWindowManager.updateViewLayout(mView, mLayoutParams);
     }
 
