@@ -1,8 +1,8 @@
 package com.example.yhao.floatwindow;
 
 import android.app.Application;
-import android.os.Build;
 import android.util.Log;
+import android.view.Menu;
 import android.view.View;
 import android.view.animation.BounceInterpolator;
 import android.widget.ImageView;
@@ -14,6 +14,12 @@ import com.yhao.floatwindow.MoveType;
 import com.yhao.floatwindow.PermissionListener;
 import com.yhao.floatwindow.Screen;
 import com.yhao.floatwindow.ViewStateListener;
+import com.yhao.floatwindow.menu.FloatMenu;
+import com.yhao.floatwindow.menu.MenuItem;
+import com.yhao.floatwindow.utils.BackGroudSeletor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by yhao on 2017/12/18.
@@ -24,38 +30,6 @@ public class BaseApplication extends Application {
 
 
     private static final String TAG = "FloatWindow";
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-
-        ImageView imageView = new ImageView(getApplicationContext());
-        imageView.setImageResource(R.drawable.icon);
-
-        FloatWindow
-                .with(getApplicationContext())
-                .setView(imageView)
-                .setWidth(Screen.width, 0.2f) //设置悬浮控件宽高
-                .setHeight(Screen.width, 0.2f)
-                .setX(Screen.width, 0.8f)
-                .setY(Screen.height, 0.3f)
-                .setMoveType(MoveType.slide,100,-100)
-                .setMoveStyle(500, new BounceInterpolator())
-                .setFilter(true, A_Activity.class, C_Activity.class)
-                .setViewStateListener(mViewStateListener)
-                .setPermissionListener(mPermissionListener)
-                .setDesktopShow(true)
-                .build();
-
-
-        imageView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(BaseApplication.this, "onClick", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
     private PermissionListener mPermissionListener = new PermissionListener() {
         @Override
         public void onSuccess() {
@@ -67,7 +41,6 @@ public class BaseApplication extends Application {
             Log.d(TAG, "onFail");
         }
     };
-
     private ViewStateListener mViewStateListener = new ViewStateListener() {
         @Override
         public void onPositionUpdate(int x, int y) {
@@ -104,4 +77,51 @@ public class BaseApplication extends Application {
             Log.d(TAG, "onBackToDesktop");
         }
     };
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        ImageView imageView = new ImageView(getApplicationContext());
+        imageView.setImageResource(R.drawable.icon);
+        List<MenuItem> menus = new ArrayList<>();
+        MenuItem personItem = new MenuItem(BackGroudSeletor.getdrawble("ic_weixin", this)) {
+            @Override
+            public void action() {
+                Toast.makeText(BaseApplication.this, "打开微信", Toast.LENGTH_SHORT).show();
+//                toast("打开微信");
+//                mFloatballManager.closeMenu();
+            }
+        };
+
+        menus.add(personItem);
+        menus.add(personItem);
+        menus.add(personItem);
+        menus.add(personItem);
+        menus.add(personItem);
+        menus.add(personItem);
+        FloatWindow
+                .with(getApplicationContext())
+                .setView(imageView)
+                .setWidth(Screen.width, 0.15f) //设置悬浮控件宽高
+                .setHeight(Screen.width, 0.15f)
+                .setX(Screen.width, 0.8f)
+                .setY(Screen.height, 0.3f)
+                .setMoveType(MoveType.slide, 0, -100)
+                .setMoveStyle(500, new BounceInterpolator())
+                .setFilter(true, A_Activity.class, C_Activity.class)
+                .setViewStateListener(mViewStateListener)
+                .setPermissionListener(mPermissionListener)
+                .setDesktopShow(true)
+                .setMenu(menus)
+                .build();
+
+
+//        imageView.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                Toast.makeText(BaseApplication.this, "onClick", Toast.LENGTH_SHORT).show();
+//            }
+//        });
+    }
 }
